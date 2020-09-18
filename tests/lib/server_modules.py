@@ -197,7 +197,7 @@ class Memcached(Base):
     def __init__(self, host, port, path, cluster_name, server_name):
         Base.__init__(self, 'memcached', host, port, path)
 
-        self.args['startcmd']     = TT('bin/memcached -d -p $port', self.args)
+        self.args['startcmd']     = TT('bin/memcached -d -p $port -u memcached', self.args)
         self.args['runcmd']       = self.args['startcmd']
 
         self.args['cluster_name'] = cluster_name
