@@ -61,14 +61,19 @@ def test_signal():
     nc.signal('TTIN')
     nc.signal('TTOU')
     nc.signal('SEGV')
+    nc.start()
+    nc.signal('INT')
+    nc.start()
+    nc.signal('TERM')
 
     time.sleep(.3)
     log = open(nc.logfile()).read()
-
     assert(strstr(log, 'HUP'))
     assert(strstr(log, 'TTIN'))
     assert(strstr(log, 'TTOU'))
     assert(strstr(log, 'SEGV'))
+    assert(strstr(log, 'INT'))
+    assert(strstr(log, 'TERM'))
 
     #recover
     nc.start()
