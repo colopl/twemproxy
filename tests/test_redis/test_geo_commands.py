@@ -76,96 +76,114 @@ def test_geopos():
     assert(r.geopos('Sicily') == [])
 
 
-def test_georadius():
+def _georadius_common(func_name):
     r = getconn()
 
     _geoadd_common(r)
 
-    assert_fail('value is not a valid float', r.georadius, 'Sicily', 'invalidValue', 'invalidValue', 'invalidValue')
+    func = getattr(r, func_name);
+    assert_fail('value is not a valid float', func, 'Sicily', 'invalidValue', 'invalidValue', 'invalidValue')
 
-    assert(r.georadius('keyNotExists', 15, 37, 200, 'km') == [])
+    assert(func('keyNotExists', 15, 37, 200, 'km') == [])
 
-    assert(r.georadius('Sicily', 15, 37, 1, 'm') == [])
+    assert(func('Sicily', 15, 37, 1, 'm') == [])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km') == ['Palermo', 'Catania'])
+    assert(func('Sicily', 15, 37, 200, 'km') == ['Palermo', 'Catania'])
 
-    assert(r.georadius('Sicily', 15, 37, 100000, 'm') == ['Catania'])
+    assert(func('Sicily', 15, 37, 100000, 'm') == ['Catania'])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', withdist=True) == [
+    assert(func('Sicily', 15, 37, 200, 'km', withdist=True) == [
         ['Palermo', 190.4424],
         ['Catania', 56.4413]
     ])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', withcoord=True) == [
+    assert(func('Sicily', 15, 37, 200, 'km', withcoord=True) == [
         ['Palermo', (13.361389338970184, 38.1155563954963)],
         ['Catania', (15.087267458438873, 37.50266842333162)]
     ])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', withhash=True) == [
+    assert(func('Sicily', 15, 37, 200, 'km', withhash=True) == [
         ['Palermo', 3479099956230698],
         ['Catania', 3479447370796909]
     ])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', withdist=True, withcoord=True, withhash=True) == [
+    assert(func('Sicily', 15, 37, 200, 'km', withdist=True, withcoord=True, withhash=True) == [
         ['Palermo', 190.4424, 3479099956230698, (13.361389338970184, 38.1155563954963)],
         ['Catania', 56.4413, 3479447370796909, (15.087267458438873, 37.50266842333162)]
     ])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', count=1) == ['Catania'])
+    assert(func('Sicily', 15, 37, 200, 'km', count=1) == ['Catania'])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', count=1, sort='ASC') == ['Catania'])
+    assert(func('Sicily', 15, 37, 200, 'km', count=1, sort='ASC') == ['Catania'])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', count=1, sort='DESC') == ['Palermo'])
+    assert(func('Sicily', 15, 37, 200, 'km', count=1, sort='DESC') == ['Palermo'])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', count=3, sort='ASC') == ['Catania', 'Palermo'])
+    assert(func('Sicily', 15, 37, 200, 'km', count=3, sort='ASC') == ['Catania', 'Palermo'])
 
-    assert(r.georadius('Sicily', 15, 37, 200, 'km', withdist=True, count=1) == [['Catania', 56.4413]])
+    assert(func('Sicily', 15, 37, 200, 'km', withdist=True, count=1) == [['Catania', 56.4413]])
 
 
-def test_georadiusbymember():
+def test_georadius():
+    _georadius_common('georadius')
+
+
+def test_georadius_ro():
+    _georadius_common('georadius_ro')
+
+
+def _georadiusbymember_common(func_name):
     r = getconn()
 
+    func = getattr(r, func_name);
     r.geoadd('Sicily',
         13.583333, 37.316667, 'Agrigento')
     _geoadd_common(r)
 
-    assert(r.georadiusbymember('keyNotExists', 'memberNotExists', 200, 'km') == [])
+    assert(func('keyNotExists', 'memberNotExists', 200, 'km') == [])
 
-    assert_fail('could not decode requested zset member', r.georadiusbymember, 'Sicily', 'memberNotExists', 200, 'km')
+    assert_fail('could not decode requested zset member', func, 'Sicily', 'memberNotExists', 200, 'km')
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 1, 'm') == ['Agrigento'])
+    assert(func('Sicily', 'Agrigento', 1, 'm') == ['Agrigento'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km') == ['Agrigento', 'Palermo'])
+    assert(func('Sicily', 'Agrigento', 100, 'km') == ['Agrigento', 'Palermo'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', withdist=True) == [
+    assert(func('Sicily', 'Agrigento', 100, 'km', withdist=True) == [
         ['Agrigento', 0.0],
         ['Palermo', 90.9778]
     ])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', withcoord=True) == [
+    assert(func('Sicily', 'Agrigento', 100, 'km', withcoord=True) == [
         ['Agrigento', (13.583331406116486, 37.316668049938166)],
         ['Palermo', (13.361389338970184, 38.1155563954963)]
     ])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', withhash=True) == [
+    assert(func('Sicily', 'Agrigento', 100, 'km', withhash=True) == [
         ['Agrigento', 3479030013248308],
         ['Palermo', 3479099956230698]
     ])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', withdist=True, withcoord=True, withhash=True) == [
+    assert(func('Sicily', 'Agrigento', 100, 'km', withdist=True, withcoord=True, withhash=True) == [
         ['Agrigento', 0.0, 3479030013248308, (13.583331406116486, 37.316668049938166)],
         ['Palermo', 90.9778, 3479099956230698, (13.361389338970184, 38.1155563954963)]
     ])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', count=1) == ['Agrigento'])
+    assert(func('Sicily', 'Agrigento', 100, 'km', count=1) == ['Agrigento'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', count=1, sort='ASC') == ['Agrigento'])
+    assert(func('Sicily', 'Agrigento', 100, 'km', count=1, sort='ASC') == ['Agrigento'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', count=1, sort='DESC') == ['Palermo'])
+    assert(func('Sicily', 'Agrigento', 100, 'km', count=1, sort='DESC') == ['Palermo'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', count=3, sort='ASC') == ['Agrigento', 'Palermo'])
+    assert(func('Sicily', 'Agrigento', 100, 'km', count=3, sort='ASC') == ['Agrigento', 'Palermo'])
 
-    assert(r.georadiusbymember('Sicily', 'Agrigento', 100, 'km', withdist=True, count=1) == [
+    assert(func('Sicily', 'Agrigento', 100, 'km', withdist=True, count=1) == [
         ['Agrigento', 0.0]
     ])
+
+
+def test_georadiusbymember():
+    _georadiusbymember_common('georadiusbymember')
+
+
+def test_georadiusbymember_ro():
+    _georadiusbymember_common('georadiusbymember_ro')
 
