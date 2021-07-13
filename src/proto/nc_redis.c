@@ -214,6 +214,14 @@ redis_argn(struct msg *r)
 
     case MSG_REQ_REDIS_BITCOUNT:
     case MSG_REQ_REDIS_BITPOS:
+    case MSG_REQ_REDIS_GEOADD:
+    case MSG_REQ_REDIS_GEOPOS:
+    case MSG_REQ_REDIS_GEODIST:
+    case MSG_REQ_REDIS_GEOHASH:
+    case MSG_REQ_REDIS_GEORADIUS:
+    case MSG_REQ_REDIS_GEORADIUS_RO:
+    case MSG_REQ_REDIS_GEORADIUSBYMEMBER:
+    case MSG_REQ_REDIS_GEORADIUSBYMEMBER_RO:
 
     case MSG_REQ_REDIS_SET:
     case MSG_REQ_REDIS_HDEL:
@@ -809,6 +817,16 @@ redis_parse_req(struct msg *r)
                     break;
                 }
 
+                if (str6icmp(m, 'g', 'e', 'o', 'a', 'd', 'd')) {
+                    r->type = MSG_REQ_REDIS_GEOADD;
+                    break;
+                }
+
+                if (str6icmp(m, 'g', 'e', 'o', 'p', 'o', 's')) {
+                    r->type = MSG_REQ_REDIS_GEOPOS;
+                    break;
+                }
+
                 if (str6icmp(m, 'p', 's', 'e', 't', 'e', 'x')) {
                     r->type = MSG_REQ_REDIS_PSETEX;
                     break;
@@ -912,6 +930,16 @@ redis_parse_req(struct msg *r)
                     break;
                 }
 
+                if (str7icmp(m, 'g', 'e', 'o', 'd', 'i', 's', 't')) {
+                    r->type = MSG_REQ_REDIS_GEODIST;
+                    break;
+                }
+
+                if (str7icmp(m, 'g', 'e', 'o', 'h', 'a', 's', 'h')) {
+                    r->type = MSG_REQ_REDIS_GEOHASH;
+                    break;
+                }
+
                 if (str7icmp(m, 'z', 'i', 'n', 'c', 'r', 'b', 'y')) {
                     r->type = MSG_REQ_REDIS_ZINCRBY;
                     break;
@@ -973,6 +1001,11 @@ redis_parse_req(struct msg *r)
                 break;
 
             case 9:
+                if (str9icmp(m, 'g', 'e', 'o', 'r', 'a', 'd', 'i', 'u', 's')) {
+                    r->type = MSG_REQ_REDIS_GEORADIUS;
+                    break;
+                }
+
                 if (str9icmp(m, 'p', 'e', 'x', 'p', 'i', 'r', 'e', 'a', 't')) {
                     r->type = MSG_REQ_REDIS_PEXPIREAT;
                     break;
@@ -1050,6 +1083,11 @@ redis_parse_req(struct msg *r)
                     break;
                 }
 
+                if (str12icmp(m, 'g', 'e', 'o', 'r', 'a', 'd', 'i', 'u', 's', '_', 'r', 'o')) {
+                    r->type = MSG_REQ_REDIS_GEORADIUS_RO;
+                    break;
+                }
+
 
                 break;
 
@@ -1085,6 +1123,22 @@ redis_parse_req(struct msg *r)
 
                 if (str16icmp(m, 'z', 'r', 'e', 'v', 'r', 'a', 'n', 'g', 'e', 'b', 'y', 's', 'c', 'o', 'r', 'e')) {
                     r->type = MSG_REQ_REDIS_ZREVRANGEBYSCORE;
+                    break;
+                }
+
+                break;
+
+            case 17:
+                if (str17icmp(m, 'g', 'e', 'o', 'r', 'a', 'd', 'i', 'u', 's', 'b', 'y', 'm', 'e', 'm', 'b', 'e', 'r')) {
+                    r->type = MSG_REQ_REDIS_GEORADIUSBYMEMBER;
+                    break;
+                }
+
+                break;
+
+            case 20:
+                if (str20icmp(m, 'g', 'e', 'o', 'r', 'a', 'd', 'i', 'u', 's', 'b', 'y', 'm', 'e', 'm', 'b', 'e', 'r', '_', 'r', 'o')) {
+                    r->type = MSG_REQ_REDIS_GEORADIUSBYMEMBER_RO;
                     break;
                 }
 
@@ -1687,6 +1741,25 @@ error:
 }
 
 /*
+ * Return true, if there are no remaining args to be parsed, otherwise
+ * return false
+ */
+static bool
+redis_decrement_depth_and_is_parse_done(struct msg *r) {
+    bool ret = false;
+    while (r->rnarg == 0 && r->depth > 0) {
+        r->depth--;
+        r->rnarg = r->rnargs[r->depth] - 1;
+    }
+
+    if (r->rnarg == 0 && r->depth == 0) {
+        ret = true;
+    }
+
+    return ret;
+}
+
+/*
  * Reference: http://redis.io/topics/protocol
  *
  * Redis will reply to commands with different kinds of replies. It is
@@ -2034,7 +2107,13 @@ redis_parse_rsp(struct msg *r)
         case SW_BULK_ARG_LF:
             switch (ch) {
             case LF:
-                goto done;
+                if (r->depth > 0) {
+                    if (redis_decrement_depth_and_is_parse_done(r)) {
+                        goto done;
+                    }
+                } else {
+                    goto done;
+                }
 
             default:
                 goto error;
@@ -2060,7 +2139,10 @@ redis_parse_rsp(struct msg *r)
                     goto error;
                 }
 
-                r->narg = r->rnarg;
+                if (r->depth == 0) {
+                    r->narg = r->rnarg;
+                }
+
                 r->narg_end = p;
                 r->token = NULL;
                 state = SW_MULTIBULK_NARG_LF;
@@ -2075,7 +2157,13 @@ redis_parse_rsp(struct msg *r)
             case LF:
                 if (r->rnarg == 0) {
                     /* response is '*0\r\n' */
-                    goto done;
+                    if (r->depth > 0) {
+                        if (redis_decrement_depth_and_is_parse_done(r)) {
+                            goto error;
+                        }
+                    } else {
+                        goto done;
+                    }
                 }
 
                 state = SW_MULTIBULK_ARGN_LEN;
@@ -2095,26 +2183,51 @@ redis_parse_rsp(struct msg *r)
                  * of a multi bulk reply can be of any kind, including a
                  * nested multi bulk reply.
                  *
-                 * Here, we only handle a multi bulk reply element that
+                 * Here, we can handle NC_MULTIBULK_MAX_DEPTH depth multi bulk reply element that
                  * are either integer reply or bulk reply.
                  *
-                 * there is a special case for sscan/hscan/zscan, these command
+                 * there is a special case for sscan/hscan/zscan/geopos/georadius/georadiusbymember, these command
                  * replay a nested multi-bulk with a number and a multi bulk like this:
                  *
-                 * - mulit-bulk
+                 * - multi-bulk
                  *    - cursor
-                 *    - mulit-bulk
+                 *    - multi-bulk
                  *       - val1
                  *       - val2
                  *       - val3
                  *
-                 * in this case, there is only one sub-multi-bulk,
-                 * and it's the last element of parent,
-                 * we can handle it like tail-recursive.
+                 * - multi-bulk
+                 *    - multi-bulk
+                 *       - val1
+                 *       - val2
+                 *       - val3
+                 *    - multi-bulk
+                 *       - val1
+                 *       - val2
+                 *       - val3
                  *
+                 * - multi-bulk
+                 *    - multi-bulk
+                 *       - val1
+                 *       - multi-bulk
+                 *          - val2
+                 *          - val3
+                 *    - multi-bulk
+                 *       - val1
+                 *       - multi-bulk
+                 *          - val2
+                 *          - val3
                  */
-                if (ch == '*') {    /* for sscan/hscan/zscan only */
+                if (ch == '*') {    /* for sscan/hscan/zscan/geopos/georadius/georadiusbymember only */
                     p = p - 1;      /* go back by 1 byte */
+
+                    if (r->depth >= NC_MULTIBULK_MAX_DEPTH) {
+                        goto error;
+                    }
+
+                    r->rnargs[r->depth] = r->rnarg;
+                    r->depth++;
+
                     state = SW_MULTIBULK;
                     break;
                 }
@@ -2191,7 +2304,13 @@ redis_parse_rsp(struct msg *r)
             switch (ch) {
             case LF:
                 if (r->rnarg == 0) {
-                    goto done;
+                    if (r->depth > 0) {
+                        if (redis_decrement_depth_and_is_parse_done(r)) {
+                            goto done;
+                        }
+                    } else {
+                        goto done;
+                    }
                 }
 
                 state = SW_MULTIBULK_ARGN_LEN;

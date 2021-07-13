@@ -138,6 +138,22 @@
     (str15icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14) &&       \
      (m[15] == c15 || m[15] == (c15 ^ 0x20)))
 
+#define str17icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16)  \
+    (str16icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15) &&       \
+     (m[16] == c16 || m[16] == (c16 ^ 0x20)))
+
+#define str18icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17)  \
+    (str17icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16) &&       \
+     (m[17] == c17 || m[17] == (c17 ^ 0x20)))
+
+#define str19icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18)  \
+    (str18icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17) &&       \
+     (m[18] == c18 || m[18] == (c18 ^ 0x20)))
+
+#define str20icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18, c19)  \
+    (str19icmp(m, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15, c16, c17, c18) &&       \
+     (m[19] == c19 || m[19] == (c19 ^ 0x20)))
+
 void memcache_parse_req(struct msg *r);
 void memcache_parse_rsp(struct msg *r);
 bool memcache_failure(struct msg *r);
